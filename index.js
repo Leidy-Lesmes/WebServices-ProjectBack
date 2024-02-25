@@ -1,6 +1,5 @@
 process.env.SERVER_IP = '127.0.0.1'; 
 
-
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const morgan = require('morgan');
@@ -29,7 +28,8 @@ let parkedCars = [];
 app.post('/cars', async (req, res) => {
     const { license_plate, color } = req.body;
     const entryTime = new Date();
-    const state = "Activo"; 
+    const state = "Activo";
+    let exitTime = null; // Inicializar exitTime como null
 
     try {
         if (!req.files || Object.keys(req.files).length === 0) {
@@ -67,7 +67,7 @@ app.post('/cars', async (req, res) => {
                 const image_url = imgurResponse.data.data.link;
 
                 // Construir el objeto del carro
-                const car = { license_plate, color, entryTime, state, image_url };
+                const car = { license_plate, color, entryTime, state, exitTime, image_url }; // Agregar exitTime
                 parkedCars.push(car);
                 console.log('Car parked:', car);
                 res.status(201).json(car);
@@ -80,8 +80,6 @@ app.post('/cars', async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
-
-
 
 
 // Listar los vehículos registrados
@@ -99,6 +97,7 @@ app.patch('/cars', (req, res) => {
     const index = parkedCars.findIndex(car => car.license_plate === license_plate);
     if (index !== -1) {
         parkedCars[index].state = "Retirado"; // Cambiar el estado a "retirado"
+        parkedCars[index].exitTime = new Date(); // Agregar la hora de salida del carro
         const updatedCar = parkedCars[index];
         console.log('Car state updated:', updatedCar);
         res.json(updatedCar);
@@ -106,6 +105,7 @@ app.patch('/cars', (req, res) => {
         res.status(404).json({ error: 'Car not found' });
     }
 });
+
 
 // Obtener todas las placas de los carros en estado activo
 app.get('/cars/license-plates', (req, res) => {
@@ -126,6 +126,3 @@ app.get('/cars/license-plates', (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
-
-
-
