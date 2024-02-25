@@ -32,7 +32,6 @@ app.get('/cars', (req, res) => {
     res.json(parkedCars);
 });
 
-
 app.listen(PORT, () => {
     console.log(`Server running at http://${IP}:${PORT}/`);
 });
@@ -50,4 +49,26 @@ app.patch('/cars', (req, res) => {
         res.status(404).json({ error: 'Car not found' });
     }
 });
+
+// Obtener todas las placas de los carros en estado activo
+app.get('/cars/license-plates', (req, res) => {
+    try {
+        if (!parkedCars || parkedCars.length === 0) {
+            return res.status(404).json({ error: 'No hay carros registrados' });
+        }
+        
+        // Filtrar los carros en estado activo
+        const activeCars = parkedCars.filter(car => car.state === 'Activo');
+
+        // Obtener las placas de los carros en estado activo
+        const licensePlates = activeCars.map(car => car.license_plate);
+
+        res.json(licensePlates);
+    } catch (error) {
+        console.error('Error al obtener las placas de los carros:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+
 
