@@ -35,8 +35,9 @@ app.post('/cars', async (req, res) => {
 
         const existingCarIndex = parkedCars.findIndex(car => car.license_plate === license_plate);
         if (existingCarIndex !== -1) {
-            return res.status(400).json({ error: 'Ya existe un carro con esta placa en el parqueadero.' });
+            return res.status(400).json({ error: 'No se puede registrar el vehículo porque ya existe un carro con esta placa en el parqueadero.' });
         }
+        
         
         if (!req.files || Object.keys(req.files).length === 0) {
             console.log(req.files);
