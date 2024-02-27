@@ -33,12 +33,6 @@ app.post('/cars', async (req, res) => {
 
     try {
 
-        const existingCarIndex = parkedCars.findIndex(car => car.license_plate === license_plate);
-        if (existingCarIndex !== -1) {
-            return res.status(400).json({ error: 'No se puede registrar el vehículo porque ya existe un carro con esta placa en el parqueadero.' });
-        }
-        
-        
         if (!req.files || Object.keys(req.files).length === 0) {
             console.log(req.files);
             return res.status(400).send('No se encontró ningún archivo.');
@@ -107,9 +101,6 @@ app.patch('/cars', (req, res) => {
     const { license_plate } = req.body;
     const index = parkedCars.findIndex(car => car.license_plate === license_plate);
     if (index !== -1) {
-        if (parkedCars[index].state === "Retirado") {
-            return res.status(400).json({ error: 'Este carro ya ha sido retirado y no puede ser retirado nuevamente.' });
-        }
         parkedCars[index].state = "Retirado"; 
         parkedCars[index].exitTime = new Date(); 
         const updatedCar = parkedCars[index];
