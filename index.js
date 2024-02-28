@@ -24,6 +24,12 @@ app.use(fileUpload());
 
 let parkedCars = [];
 
+app.listen(PORT, () => {
+    const currentTime = new Date().toLocaleString();
+    console.log('Server start at:', currentTime);
+    console.log(`Server running at http://${IP}:${PORT}/`);
+});
+
 // Registrar el ingreso a un parqueadero de un carro
 app.post('/cars', async (req, res) => {
     const { license_plate, color } = req.body;
@@ -35,6 +41,8 @@ app.post('/cars', async (req, res) => {
 
         if (!req.files || Object.keys(req.files).length === 0) {
             console.log(req.files);
+            // Log de error si no se encuentra ningún archivo
+            console.error(`[${new Date().toLocaleString()}] Error: No se encontró ningún archivo.`);
             return res.status(400).send('No se encontró ningún archivo.');
         }
 
@@ -45,7 +53,8 @@ app.post('/cars', async (req, res) => {
         file.mv(`${__dirname}/uploads/${fileName}`, async function(err) {
             console.log ('El archivo se guardo en /uploads: ' + fileName);
             if (err) {
-                console.error('Error al guardar el archivo:', err);
+                // Log de error si hay un problema al guardar el archivo
+                console.error(`[${new Date().toLocaleString()}] Error al guardar el archivo:`, err);
                 return res.status(500).json({ error: 'Error interno del servidor al guardar el archivo.' });
             }
 
@@ -63,6 +72,9 @@ app.post('/cars', async (req, res) => {
                 }
             });
 
+            // Logs: Código de estado de la petición
+            console.log(`[${new Date().toLocaleString()}] Status: ${imgurResponse.status}`);
+
             // Verificar si la subida de la imagen fue exitosa
             if (imgurResponse.data.success) {
                 const image_url = imgurResponse.data.data.link;
@@ -79,21 +91,17 @@ app.post('/cars', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error al procesar la solicitud:', error);
+        // Log de error si hay un error al procesar la solicitud
+        console.error(`[${new Date().toLocaleString()}] Error al procesar la solicitud:`, error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
 
+
 // Listar los vehículos registrados
 app.get('/cars', (req, res) => {
     res.json(parkedCars);
-});
-
-app.listen(PORT, () => {
-    const currentTime = new Date().toLocaleString();
-    console.log('Server start at:', currentTime);
-    console.log(`Server running at http://${IP}:${PORT}/`);
 });
 
 // Retirar el carro usando la placa
