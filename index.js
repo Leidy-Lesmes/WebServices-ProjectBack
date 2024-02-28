@@ -1,6 +1,5 @@
-process.env.SERVER_IP = '127.0.0.1'; 
-
 const express = require('express');
+require("dotenv").config();
 const fileUpload = require('express-fileupload');
 const morgan = require('morgan');
 const cors = require('cors');
@@ -9,8 +8,8 @@ const FormData = require('form-data');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const IP = process.env.IP || 'localhost';
+const port = process.env.NODE_SERVICE_PORT;
+const ip = process.env.NODE_SERVICE_IP;
 
 app.use(express.json());
 app.use(morgan('combined'));
@@ -24,10 +23,10 @@ app.use(fileUpload());
 
 let parkedCars = [];
 
-app.listen(PORT, () => {
+app.listen(port, () => {
     const currentTime = new Date().toLocaleString();
     console.log('Server start at:', currentTime);
-    console.log(`Server running at http://${IP}:${PORT}/`);
+    console.log(`Server running at http://${ip}:${port}/`);
 });
 
 // Registrar el ingreso a un parqueadero de un carro
