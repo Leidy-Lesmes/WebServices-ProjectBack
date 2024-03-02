@@ -100,8 +100,14 @@ app.post('/cars', async (req, res) => {
 
 // Listar los vehículos registrados
 app.get('/cars', (req, res) => {
-    res.json(parkedCars);
+    try {
+        res.json(parkedCars);
+    } catch (error) {
+        console.error('Error al obtener los vehículos:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
+
 
 // Retirar el carro usando la placa
 app.patch('/cars', (req, res) => {
