@@ -112,6 +112,7 @@ app.post('/cars', async (req, res) => {
                     image: imageBytes,
                     imageurl: image_url
                 });
+                
 
             } else {
                 res.status(500).json({ error: 'Error al subir la imagen al servidor de Imgur' });
@@ -127,9 +128,10 @@ app.post('/cars', async (req, res) => {
 
 
 // Listar los vehículos registrados
-app.get('/cars', (req, res) => {
+app.get('/cars', async (req, res) => {
     try {
-        res.json(parkedCars);
+        const vehicles = await Vehicle.findAll();
+        res.json(vehicles);
     } catch (error) {
         console.error('Error al obtener los vehículos:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
@@ -138,17 +140,26 @@ app.get('/cars', (req, res) => {
 
 
 // Retirar el carro usando la placa
-app.patch('/cars', (req, res) => {
+app.patch('/cars', async (req, res) => {
     const { license_plate } = req.body;
-    const index = parkedCars.findIndex(car => car.license_plate === license_plate);
-    if (index !== -1) {
-        parkedCars[index].state = "Retirado";
-        parkedCars[index].exitTime = new Date();
-        const updatedCar = parkedCars[index];
-        console.log('Car state updated:', updatedCar);
-        res.json(updatedCar);
-    } else {
-        res.status(404).json({ error: 'Car not found' });
+    
+    try {
+        const vehicle = await Vehicle.findOne({ where: { license_plate } });
+        
+        if (vehicle) {
+            vehicle.state = "Retirado";
+            vehicle.exittime = new Date(); // Agregar la hora actual en exitTime
+            
+            await vehicle.save();
+
+            console.log('Car state updated:', vehicle);
+            res.json(vehicle);
+        } else {
+            res.status(404).json({ error: 'Car not found' });
+        }
+    } catch (error) {
+        console.error('Error updating car state:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
