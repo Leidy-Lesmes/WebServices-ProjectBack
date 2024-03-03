@@ -114,6 +114,8 @@ app.post('/cars', async (req, res) => {
                 });
                 
 
+                // Enviar respuesta al cliente indicando que el vehículo se registró correctamente
+                res.status(201).json({ message: 'El vehículo se registró correctamente' });
             } else {
                 res.status(500).json({ error: 'Error al subir la imagen al servidor de Imgur' });
             }
