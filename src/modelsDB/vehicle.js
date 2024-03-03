@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('./database');
+const sequelize = require('../database');
+
 
 const Vehicle = sequelize.define('Vehicle', {
     license_plate: {
@@ -7,17 +8,17 @@ const Vehicle = sequelize.define('Vehicle', {
         allowNull: false,
         primaryKey: true
     },
-    entryTime: {
+    entrytime: {
         type: DataTypes.DATE,
         allowNull: false,
         primaryKey: true,
-        defaultValue: DataTypes.NOW // Puedes definir un valor predeterminado para la fecha de entrada
+        defaultValue: DataTypes.NOW
     },
     color: {
         type: DataTypes.STRING(15),
         allowNull: false
     },
-    exitTime: {
+    exittime: {
         type: DataTypes.DATE,
         allowNull: true
     },
@@ -29,10 +30,13 @@ const Vehicle = sequelize.define('Vehicle', {
         type: DataTypes.BLOB,
         allowNull: false
     },
-    imageUrl: {
+    imageurl: {
         type: DataTypes.STRING(255),
         allowNull: false
     }
+}, {
+    timestamps: true,
+    tableName: 'vehicle'
 });
 
 module.exports = Vehicle;

@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('./database');
+const sequelize = require('../database');
 const Vehicle = require('./vehicle');
 
-const VehicleHistory = sequelize.define('VehicleHistory', {
+const VehicleHistory = sequelize.define('vehicle_history', {
     history_id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -45,6 +45,8 @@ const VehicleHistory = sequelize.define('VehicleHistory', {
         type: DataTypes.TEXT,
         allowNull: true
     }
+}, {
+    tableName: 'vehicle_history'
 });
 
 // Establecer la relación con la tabla VEHICLE

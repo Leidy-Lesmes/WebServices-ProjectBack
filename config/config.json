@@ -1,0 +1,23 @@
+{
+    "development": {
+        "username": "postgres",
+        "password": "a123",
+        "database": "ParkingLot",
+        "host": "localhost",
+        "dialect": "postgres"
+    },
+    "test": {
+        "username": "postgres",
+        "password": "2320",
+        "database": "databaseUbilocTest",
+        "host": "localhost",
+        "dialect": "postgres"
+    },
+    "production": {
+        "username": "postgres",
+        "password": "2320",
+        "database": "databaseUbilocProduction",
+        "host": "localhost",
+        "dialect": "postgres"
+    }
+}

@@ -3,11 +3,16 @@ require("dotenv").config();
 const fileUpload = require('express-fileupload');
 const morgan = require('morgan');
 const cors = require('cors');
+
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 
 const sequelize = require('./src/database');
+const Vehicle = require('./src/modelsDB/vehicle');
+const VehicleHistory = require('./src/modelsDB/vehicleHistory');
+
+
 const app = express();
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
@@ -32,18 +37,25 @@ app.use(async (req, res, next) => {
     }
 });
 
-app.listen(port, () => {
-    const currentTime = new Date().toLocaleString();
-    console.log('Server start at:', currentTime);
-    console.log(`Server running at http://${ip}:${port}/`);
+// Sincroniza los modelos con la base de datos
+sequelize.sync().then(() => {
+    console.log('All models were synchronized successfully.');
+    // Inicia tu servidor aquí
+    app.listen(port, () => {
+        const currentTime = new Date().toLocaleString();
+        console.log('Server start at:', currentTime);
+        console.log(`Server running at http://${ip}:${port}/`);
+    });
+}).catch(err => {
+    console.error('Error syncing models with database:', err);
 });
 
 // Registrar el ingreso a un parqueadero de un carro
 app.post('/cars', async (req, res) => {
     const { license_plate, color } = req.body;
-    const entryTime = new Date();
+    const entrytime = new Date();
     const state = "Activo";
-    let exitTime = null; 
+    let exittime = null;
 
     try {
 
@@ -58,8 +70,8 @@ app.post('/cars', async (req, res) => {
         const fileName = file.name;
 
         // Guardar el archivo en el servidor
-        file.mv(`${__dirname}/uploads/${fileName}`, async function(err) {
-            console.log ('El archivo se guardo en /uploads: ' + fileName);
+        file.mv(`${__dirname}/uploads/${fileName}`, async function (err) {
+            console.log('El archivo se guardo en /uploads: ' + fileName);
             if (err) {
                 // Log de error si hay un problema al guardar el archivo
                 console.error(`[${new Date().toLocaleString()}] Error al guardar el archivo:`, err);
@@ -88,12 +100,19 @@ app.post('/cars', async (req, res) => {
                 const image_url = imgurResponse.data.data.link;
                 console.log('El archivo se cargo correctamente al servidor de imagenes en el link  ' + image_url);
 
-                // Construir el objeto del carro
-                const car = { license_plate, color, entryTime, state, exitTime, image_url }; // Agregar exitTime
-                parkedCars.push(car);
-                console.log('Car parked:', car);
-                res.status(201).json(car);
-                
+                // Leer los bytes de la imagen
+                const imageBytes = fs.readFileSync(`${__dirname}/uploads/${fileName}`);
+
+                const newVehicle = await Vehicle.create({
+                    license_plate,
+                    entrytime,
+                    color,
+                    exittime,
+                    state,
+                    image: imageBytes,
+                    imageurl: image_url
+                });
+
             } else {
                 res.status(500).json({ error: 'Error al subir la imagen al servidor de Imgur' });
             }
@@ -123,8 +142,8 @@ app.patch('/cars', (req, res) => {
     const { license_plate } = req.body;
     const index = parkedCars.findIndex(car => car.license_plate === license_plate);
     if (index !== -1) {
-        parkedCars[index].state = "Retirado"; 
-        parkedCars[index].exitTime = new Date(); 
+        parkedCars[index].state = "Retirado";
+        parkedCars[index].exitTime = new Date();
         const updatedCar = parkedCars[index];
         console.log('Car state updated:', updatedCar);
         res.json(updatedCar);
@@ -140,11 +159,8 @@ app.get('/cars/license-plates', (req, res) => {
         if (!parkedCars || parkedCars.length === 0) {
             return res.status(404).json({ error: 'No hay carros registrados' });
         }
-        
         const activeCars = parkedCars.filter(car => car.state === 'Activo');
-
         const licensePlates = activeCars.map(car => car.license_plate);
-
         res.json(licensePlates);
     } catch (error) {
         console.error('Error al obtener las placas de los carros:', error);
