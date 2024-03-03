@@ -7,6 +7,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 
+const sequelize = require('./src/database');
 const app = express();
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
@@ -15,13 +16,21 @@ app.use(express.json());
 app.use(morgan('combined'));
 app.use(cors());
 
-// Configuración de express-fileupload
 app.use(fileUpload());
 
-// Resto de tu código
-
-
 let parkedCars = [];
+
+// Middleware para comprobar la conexión a la base de datos
+app.use(async (req, res, next) => {
+    try {
+        await sequelize.authenticate(); // Intenta autenticarse con la base de datos
+        console.log('Connection to database has been established successfully.');
+        next(); // Continúa con la ejecución de las solicitudes de la API
+    } catch (error) {
+        console.error('Unable to connect to the database:', error);
+        res.status(500).json({ error: 'Unable to connect to the database' });
+    }
+});
 
 app.listen(port, () => {
     const currentTime = new Date().toLocaleString();
