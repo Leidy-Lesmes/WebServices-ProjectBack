@@ -212,15 +212,15 @@ app.get('/cars/license-plates', async (req, res) => {
         const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
         
         if (activeVehicles.length === 0) {
-            return res.status(404).json({ error: 'No hay carros registrados' });
+            return res.status(404).json({ error: '###### SERVER: No hay carros activos en el parqueadero.' });
         }
         
         const licensePlates = activeVehicles.map(vehicle => vehicle.license_plate);
         res.json(licensePlates);
     } catch (error) {
-        console.error('###### SERVER: Error al obtener las placas de los carros:', error);
-        console.log();
+        console.error('###### SERVER: Error al obtener las placas activas de los carros:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
 
