@@ -29,7 +29,7 @@ let parkedCars = [];
 app.use(async (req, res, next) => {
     try {
         await sequelize.authenticate(); // Intenta autenticarse con la base de datos
-        console.log('###### SERVER: Connection to database has been established successfully.' );
+        console.log('###### SERVER: Connection to database has been established successfully.');
         console.log();
         next(); // Continúa con la ejecución de las solicitudes de la API
     } catch (error) {
@@ -126,7 +126,7 @@ app.post('/cars', async (req, res) => {
 
             const imgurResponse = await axios.post('https://api.imgur.com/3/image', formData, {
                 headers: {
-                    Authorization: 'Client-ID ae2537bec814728', 
+                    Authorization: 'Client-ID ae2537bec814728',
                     ...formData.getHeaders()
                 }
             });
@@ -165,32 +165,47 @@ app.post('/cars', async (req, res) => {
     }
 });
 
-
-
 // Listar los vehículos registrados
 app.get('/cars', async (req, res) => {
     try {
         const vehicles = await Vehicle.findAll();
+        const payload = JSON.stringify(req.query);
+
+        await VehicleHistory.create({
+            event_type: 'Request',
+            url: req.originalUrl,
+            method: req.method,
+            payload: payload,
+            error_message: null,
+            error_payload: null
+        });
         res.json(vehicles);
     } catch (error) {
         console.error('###### SERVER: Error al obtener los vehículos:', error);
+        await VehicleHistory.create({
+            event_type: 'Error',
+            url: req.originalUrl,
+            method: req.method,
+            payload: JSON.stringify(req.query),
+            error_message: error.message, 
+            error_payload: JSON.stringify(error) 
+        });
         console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
-
 // Retirar el carro usando la placa
 app.patch('/cars', async (req, res) => {
     const { license_plate } = req.body;
-    
+
     try {
         const vehicle = await Vehicle.findOne({ where: { license_plate } });
-        
+
         if (vehicle) {
             vehicle.state = "Retirado";
             vehicle.exittime = new Date(); // Agregar la hora actual en exitTime/////////
-            
+
             await vehicle.save();
 
             console.log('###### SERVER: Car state updated:', vehicle);
@@ -210,17 +225,46 @@ app.patch('/cars', async (req, res) => {
 app.get('/cars/license-plates', async (req, res) => {
     try {
         const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
-        
+
         if (activeVehicles.length === 0) {
-            return res.status(404).json({ error: '###### SERVER: No hay carros activos en el parqueadero.' });
+            await VehicleHistory.create({
+                event_type: 'Error',
+                url: req.originalUrl,
+                method: req.method,
+                payload: null,
+                error_message: 'No hay carros activos en el parqueadero.',
+                error_payload: null
+            });
+
+            return res.status(404).json({ error: 'No hay carros activos en el parqueadero.' });
         }
-        
+
         const licensePlates = activeVehicles.map(vehicle => vehicle.license_plate);
+        await VehicleHistory.create({
+            event_type: 'Request',
+            url: req.originalUrl,
+            method: req.method,
+            payload: JSON.stringify(licensePlates),
+            error_message: null,
+            error_payload: null
+        });
+
         res.json(licensePlates);
     } catch (error) {
         console.error('###### SERVER: Error al obtener las placas activas de los carros:', error);
+        
+        await VehicleHistory.create({
+            event_type: 'Error',
+            url: req.originalUrl,
+            method: req.method,
+            payload: null,
+            error_message: error.message,
+            error_payload: JSON.stringify(error)
+        });
+
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
 
 
