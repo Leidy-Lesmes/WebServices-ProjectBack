@@ -18,7 +18,7 @@ const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
 
 app.use(express.json());
-app.use(morgan('combined'));
+app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content-length]'));
 app.use(cors());
 
 app.use(fileUpload());
@@ -29,25 +29,61 @@ let parkedCars = [];
 app.use(async (req, res, next) => {
     try {
         await sequelize.authenticate(); // Intenta autenticarse con la base de datos
-        console.log('Connection to database has been established successfully.');
+        console.log('###### SERVER: Connection to database has been established successfully.' );
+        console.log();
         next(); // Continúa con la ejecución de las solicitudes de la API
     } catch (error) {
-        console.error('Unable to connect to the database:', error);
+        console.error('###### SERVER: Unable to connect to the database:', error);
+        console.log();
         res.status(500).json({ error: 'Unable to connect to the database' });
+        console.log();
     }
 });
 
+// Configura el formato JSON personalizado para morgan
+morgan.token('jsonlogs', (req, res) => {
+    return JSON.stringify({
+        date: new Date().toISOString(),
+        url: req.originalUrl,
+        method: req.method,
+        status: res.statusCode,
+        responseTime: `${res.getHeader('X-Response-Time')} ms`,
+        contentLength: res.getHeader('Content-Length')
+    });
+});
+// Middleware para registrar logs solo para las rutas especificadas
+const logMiddleware = morgan((tokens, req, res) => {
+    // Solo utiliza el formato JSON personalizado para ciertas rutas
+    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'GET') {
+        // Logs en formato JSON con la información de la solicitud
+        console.log(`##### SERVER: 'El archivo se cargo en ${tokens.date(req, res)}', codigo de respuesta: Status: ${tokens.status(req, res)}`);
+        console.log(tokens.jsonlogs(req, res));
+        return tokens.jsonlogs(req, res);
+    }
+    return null; // Utiliza el formato predeterminado para otras rutas
+});
+
+// Agrega el middleware de registro a las rutas específicas
+app.use('/cars', logMiddleware); // Logs para las rutas relacionadas con los vehículos
+app.use('/cars/license-plates', logMiddleware)
+
+// Configura el middleware de registro predeterminado para otras rutas
+app.use(morgan('combined'));
+
+
 // Sincroniza los modelos con la base de datos
 sequelize.sync().then(() => {
-    console.log('All models were synchronized successfully.');
+    console.log('###### SERVER: All models were synchronized successfully.');
     // Inicia tu servidor aquí
     app.listen(port, () => {
         const currentTime = new Date().toLocaleString();
-        console.log('Server start at:', currentTime);
-        console.log(`Server running at http://${ip}:${port}/`);
+        console.log('###### SERVER: Server start at:', currentTime);
+        console.log(`###### SERVER: Server running at http://${ip}:${port}/`);
+        console.log();
     });
 }).catch(err => {
-    console.error('Error syncing models with database:', err);
+    console.error('###### SERVER: Error syncing models with database:', err);
+    console.log();
 });
 
 // Registrar el ingreso a un parqueadero de un carro
@@ -62,7 +98,8 @@ app.post('/cars', async (req, res) => {
         if (!req.files || Object.keys(req.files).length === 0) {
             console.log(req.files);
             // Log de error si no se encuentra ningún archivo
-            console.error(`[${new Date().toLocaleString()}] Error: No se encontró ningún archivo.`);
+            console.error(`###### SERVER: [${new Date().toLocaleString()}] Error: No se encontró ningún archivo.`);
+            console.log();
             return res.status(400).send('No se encontró ningún archivo.');
         }
 
@@ -71,10 +108,12 @@ app.post('/cars', async (req, res) => {
 
         // Guardar el archivo en el servidor
         file.mv(`${__dirname}/uploads/${fileName}`, async function (err) {
-            console.log('El archivo se guardo en /uploads: ' + fileName);
+            console.log('###### SERVER: El archivo se guardo en /uploads: ' + fileName);
+            console.log();
             if (err) {
                 // Log de error si hay un problema al guardar el archivo
-                console.error(`[${new Date().toLocaleString()}] Error al guardar el archivo:`, err);
+                console.error(`###### SERVER: [${new Date().toLocaleString()}] Error al guardar el archivo:`, err);
+                console.log();
                 return res.status(500).json({ error: 'Error interno del servidor al guardar el archivo.' });
             }
 
@@ -87,7 +126,7 @@ app.post('/cars', async (req, res) => {
 
             const imgurResponse = await axios.post('https://api.imgur.com/3/image', formData, {
                 headers: {
-                    Authorization: 'Client-ID ae2537bec814728', // Reemplaza YOUR_CLIENT_ID con tu ID de cliente de Imgur
+                    Authorization: 'Client-ID ae2537bec814728', 
                     ...formData.getHeaders()
                 }
             });
@@ -98,8 +137,8 @@ app.post('/cars', async (req, res) => {
             // Verificar si la subida de la imagen fue exitosa
             if (imgurResponse.data.success) {
                 const image_url = imgurResponse.data.data.link;
-                console.log('El archivo se cargo correctamente al servidor de imagenes en el link  ' + image_url);
-
+                console.log('###### SERVER: El archivo se cargo correctamente al servidor de imagenes en el link  ' + image_url);
+                console.log();
                 // Leer los bytes de la imagen
                 const imageBytes = fs.readFileSync(`${__dirname}/uploads/${fileName}`);
 
@@ -112,8 +151,6 @@ app.post('/cars', async (req, res) => {
                     image: imageBytes,
                     imageurl: image_url
                 });
-                
-
                 // Enviar respuesta al cliente indicando que el vehículo se registró correctamente
                 res.status(201).json({ message: 'El vehículo se registró correctamente' });
             } else {
@@ -122,7 +159,8 @@ app.post('/cars', async (req, res) => {
         });
     } catch (error) {
         // Log de error si hay un error al procesar la solicitud
-        console.error(`[${new Date().toLocaleString()}] Error al procesar la solicitud:`, error);
+        console.error(`###### SERVER: [${new Date().toLocaleString()}] Error al procesar la solicitud:`, error);
+        console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -135,7 +173,8 @@ app.get('/cars', async (req, res) => {
         const vehicles = await Vehicle.findAll();
         res.json(vehicles);
     } catch (error) {
-        console.error('Error al obtener los vehículos:', error);
+        console.error('###### SERVER: Error al obtener los vehículos:', error);
+        console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -150,33 +189,38 @@ app.patch('/cars', async (req, res) => {
         
         if (vehicle) {
             vehicle.state = "Retirado";
-            vehicle.exittime = new Date(); // Agregar la hora actual en exitTime
+            vehicle.exittime = new Date(); // Agregar la hora actual en exitTime/////////
             
             await vehicle.save();
 
-            console.log('Car state updated:', vehicle);
+            console.log('###### SERVER: Car state updated:', vehicle);
+            console.log();
             res.json(vehicle);
         } else {
             res.status(404).json({ error: 'Car not found' });
         }
     } catch (error) {
-        console.error('Error updating car state:', error);
+        console.error('###### SERVER: Error updating car state:', error);
+        console.log();
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-
 // Obtener todas las placas de los carros en estado activo
-app.get('/cars/license-plates', (req, res) => {
+app.get('/cars/license-plates', async (req, res) => {
     try {
-        if (!parkedCars || parkedCars.length === 0) {
+        const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
+        
+        if (activeVehicles.length === 0) {
             return res.status(404).json({ error: 'No hay carros registrados' });
         }
-        const activeCars = parkedCars.filter(car => car.state === 'Activo');
-        const licensePlates = activeCars.map(car => car.license_plate);
+        
+        const licensePlates = activeVehicles.map(vehicle => vehicle.license_plate);
         res.json(licensePlates);
     } catch (error) {
-        console.error('Error al obtener las placas de los carros:', error);
+        console.error('###### SERVER: Error al obtener las placas de los carros:', error);
+        console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
