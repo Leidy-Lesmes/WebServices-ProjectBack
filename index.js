@@ -63,13 +63,64 @@ const logMiddleware = morgan((tokens, req, res) => {
     return null; // Utiliza el formato predeterminado para otras rutas
 });
 
+const logRequestMiddleware = async (req, res, next) => {
+    try {
+        let payload;
+        if (req.method === 'GET') {
+            payload = JSON.stringify({
+                url: req.originalUrl,
+                query: req.query
+            });
+        } else {
+            payload = JSON.stringify(req.body);
+        }
+
+        await VehicleHistory.create({
+            event_type: 'Request',
+            url: req.originalUrl,
+            method: req.method,
+            payload: payload,
+            error_message: null,
+            error_payload: null
+        });
+        next();
+    } catch (error) {
+        console.error('###### SERVER: Error al registrar el historial de solicitud:', error);
+        next(error);
+    }
+};
+
+
+// Middleware para registrar errores en el historial de solicitudes en la base de datos
+const logErrorMiddleware = async (err, req, res, next) => {
+    try {
+        await VehicleHistory.create({
+            event_type: 'Error',
+            url: req.originalUrl,
+            method: req.method,
+            payload: JSON.stringify(req.body),
+            error_message: err.message, // Corregir aquí, usar err en lugar de error
+            error_payload: JSON.stringify(err) // Corregir aquí, usar err en lugar de error
+        });
+        next();
+    } catch (error) {
+        console.error('###### SERVER: Error al registrar el historial de solicitud de error:', error);
+        next(error);
+    }
+};
+
+
 // Agrega el middleware de registro a las rutas específicas
 app.use('/cars', logMiddleware); // Logs para las rutas relacionadas con los vehículos
 app.use('/cars/license-plates', logMiddleware)
 
+
 // Configura el middleware de registro predeterminado para otras rutas
 app.use(morgan('combined'));
-
+app.use(logErrorMiddleware, (err, req, res, next) => {
+    console.error('###### SERVER: Error de middleware:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+});
 
 // Sincroniza los modelos con la base de datos
 sequelize.sync().then(() => {
@@ -87,7 +138,7 @@ sequelize.sync().then(() => {
 });
 
 // Registrar el ingreso a un parqueadero de un carro
-app.post('/cars', async (req, res) => {
+app.post('/cars', logRequestMiddleware, async (req, res) => {
     const { license_plate, color } = req.body;
     const entrytime = new Date();
     const state = "Activo";
@@ -166,7 +217,7 @@ app.post('/cars', async (req, res) => {
 });
 
 // Listar los vehículos registrados
-app.get('/cars', async (req, res) => {
+app.get('/cars', logRequestMiddleware, async (req, res) => {
     try {
         const vehicles = await Vehicle.findAll();
         const payload = JSON.stringify(req.query);
@@ -196,7 +247,7 @@ app.get('/cars', async (req, res) => {
 });
 
 // Retirar el carro usando la placa
-app.patch('/cars', async (req, res) => {
+app.patch('/cars', logRequestMiddleware,  async (req, res) => {
     const { license_plate } = req.body;
 
     try {
@@ -222,7 +273,7 @@ app.patch('/cars', async (req, res) => {
 });
 
 // Obtener todas las placas de los carros en estado activo
-app.get('/cars/license-plates', async (req, res) => {
+app.get('/cars/license-plates' , logRequestMiddleware, async (req, res) => {
     try {
         const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
 
