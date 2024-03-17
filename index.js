@@ -15,9 +15,8 @@ const VehicleHistory = require('./src/modelsDB/vehicleHistory');
 const app = express();
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
-const containerId = `server${process.env.NODE_SERVICE_PORT}`;
+const containerId = process.env.ID_SERVICE;
 console.log('Container ID:', containerId);
-
 
 app.use(express.json());
 app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content-length]'));
@@ -25,8 +24,6 @@ app.use(cors());
 
 app.use(fileUpload());
 
-
-let parkedCars = [];
 
 // Middleware para comprobar la conexión a la base de datos
 app.use(async (req, res, next) => {
@@ -66,7 +63,7 @@ const logMiddleware = morgan((tokens, req, res) => {
     return null; // Utiliza el formato predeterminado para otras rutas
 });
 
-const logRequestMiddleware = (containerId) => async (req, res, next) => {
+const logRequestMiddleware = async (req, res, next) => {
     try {
         let payload;
         if (req.method === 'GET') {
@@ -93,7 +90,7 @@ const logRequestMiddleware = (containerId) => async (req, res, next) => {
         next(error);
     }
 };
-app.use(logRequestMiddleware(process.env.ID_SERVICE));
+app.use(logRequestMiddleware);
 
 // Middleware para registrar errores en el historial de solicitudes en la base de datos
 const logErrorMiddleware = async (err, req, res, next) => {
@@ -103,8 +100,9 @@ const logErrorMiddleware = async (err, req, res, next) => {
             url: req.originalUrl,
             method: req.method,
             payload: JSON.stringify(req.body),
-            error_message: err.message, // Corregir aquí, usar err en lugar de error
-            error_payload: JSON.stringify(err) // Corregir aquí, usar err en lugar de error
+            error_message: err.message, 
+            error_payload: JSON.stringify(err),
+            container_id: containerId 
         });
         next();
     } catch (error) {
@@ -113,8 +111,7 @@ const logErrorMiddleware = async (err, req, res, next) => {
     }
 };
 
-// Agrega el middleware de registro a las rutas específicas
-app.use('/cars', logMiddleware); // Logs para las rutas relacionadas con los vehículos
+app.use('/cars', logMiddleware);
 app.use('/cars/license-plates', logMiddleware)
 
 
@@ -141,7 +138,7 @@ sequelize.sync().then(() => {
 });
 
 // Registrar el ingreso a un parqueadero de un carro
-app.post('/cars', logRequestMiddleware, async (req, res) => {
+app.post('/cars', logRequestMiddleware, async (req, res, next) => {
     const { license_plate, color } = req.body;
     const entrytime = new Date();
     const state = "Activo";
@@ -216,7 +213,7 @@ app.post('/cars', logRequestMiddleware, async (req, res) => {
 });
 
 // Listar los vehículos registrados
-app.get('/cars', logRequestMiddleware, async (req, res) => {
+app.get('/cars', logRequestMiddleware, async (req, res, next) => {
     try {
         const vehicles = await Vehicle.findAll();
         const payload = JSON.stringify(req.query);
@@ -246,7 +243,7 @@ app.get('/cars', logRequestMiddleware, async (req, res) => {
 });
 
 // Retirar el carro usando la placa
-app.patch('/cars', logRequestMiddleware, async (req, res) => {
+app.patch('/cars', logRequestMiddleware, async (req, res, next) => {
     const { license_plate } = req.body;
 
     try {
@@ -272,7 +269,7 @@ app.patch('/cars', logRequestMiddleware, async (req, res) => {
 });
 
 // Obtener todas las placas de los carros en estado activo
-app.get('/cars/license-plates', logRequestMiddleware, async (req, res) => {
+app.get('/cars/license-plates', logRequestMiddleware, async (req, res, next) => {
     try {
         const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
 
@@ -317,9 +314,20 @@ app.get('/cars/license-plates', logRequestMiddleware, async (req, res) => {
 });
 
 //ping
-app.get('/ping', (req, res) => {
-    const randomDelay = Math.floor(Math.random() * 500); // retraso aleatorio de hasta 500 ms
+app.get('/ping', (req, res, next) => {
+    const randomDelay = Math.floor(Math.random() * 500);
     setTimeout(() => {
         res.send('pong');
     }, randomDelay);
+});
+
+// Ruta para obtener la cantidad total de solicitudes realizadas
+app.get('/total-requests', async (req, res) => {
+    try {
+        const totalRequests = await VehicleHistory.count();
+        res.json({ totalRequests });
+    } catch (error) {
+        console.error('Error al obtener la cantidad total de solicitudes:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
