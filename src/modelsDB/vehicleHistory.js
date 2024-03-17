@@ -16,7 +16,7 @@ const VehicleHistory = sequelize.define('vehicle_history', {
         type: DataTypes.STRING(10),
         allowNull: false,
         validate: {
-            isIn: [['Request', 'Error']] // Asegura que el valor esté en este conjunto
+            isIn: [['Request', 'Error']]
         }
     },
     url: {
