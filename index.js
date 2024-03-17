@@ -12,7 +12,6 @@ const sequelize = require('./src/database');
 const Vehicle = require('./src/modelsDB/vehicle');
 const VehicleHistory = require('./src/modelsDB/vehicleHistory');
 
-
 const app = express();
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
@@ -22,8 +21,6 @@ app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content
 app.use(cors());
 
 app.use(fileUpload());
-
-let parkedCars = [];
 
 // Middleware para comprobar la conexión a la base de datos
 app.use(async (req, res, next) => {
@@ -90,7 +87,6 @@ const logRequestMiddleware = async (req, res, next) => {
     }
 };
 
-
 // Middleware para registrar errores en el historial de solicitudes en la base de datos
 const logErrorMiddleware = async (err, req, res, next) => {
     try {
@@ -108,7 +104,6 @@ const logErrorMiddleware = async (err, req, res, next) => {
         next(error);
     }
 };
-
 
 // Agrega el middleware de registro a las rutas específicas
 app.use('/cars', logMiddleware); // Logs para las rutas relacionadas con los vehículos
@@ -182,15 +177,13 @@ app.post('/cars', logRequestMiddleware, async (req, res) => {
                 }
             });
 
-            // Logs: Código de estado de la petición
             console.log(`[${new Date().toLocaleString()}] Status: ${imgurResponse.status}`);
 
-            // Verificar si la subida de la imagen fue exitosa
             if (imgurResponse.data.success) {
                 const image_url = imgurResponse.data.data.link;
                 console.log('###### SERVER: El archivo se cargo correctamente al servidor de imagenes en el link  ' + image_url);
                 console.log();
-                // Leer los bytes de la imagen
+
                 const imageBytes = fs.readFileSync(`${__dirname}/uploads/${fileName}`);
 
                 const newVehicle = await Vehicle.create({
@@ -202,14 +195,12 @@ app.post('/cars', logRequestMiddleware, async (req, res) => {
                     image: imageBytes,
                     imageurl: image_url
                 });
-                // Enviar respuesta al cliente indicando que el vehículo se registró correctamente
                 res.status(201).json({ message: 'El vehículo se registró correctamente' });
             } else {
                 res.status(500).json({ error: 'Error al subir la imagen al servidor de Imgur' });
             }
         });
     } catch (error) {
-        // Log de error si hay un error al procesar la solicitud
         console.error(`###### SERVER: [${new Date().toLocaleString()}] Error al procesar la solicitud:`, error);
         console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
@@ -238,8 +229,8 @@ app.get('/cars', logRequestMiddleware, async (req, res) => {
             url: req.originalUrl,
             method: req.method,
             payload: JSON.stringify(req.query),
-            error_message: error.message, 
-            error_payload: JSON.stringify(error) 
+            error_message: error.message,
+            error_payload: JSON.stringify(error)
         });
         console.log();
         res.status(500).json({ error: 'Error interno del servidor' });
@@ -247,7 +238,7 @@ app.get('/cars', logRequestMiddleware, async (req, res) => {
 });
 
 // Retirar el carro usando la placa
-app.patch('/cars', logRequestMiddleware,  async (req, res) => {
+app.patch('/cars', logRequestMiddleware, async (req, res) => {
     const { license_plate } = req.body;
 
     try {
@@ -255,7 +246,7 @@ app.patch('/cars', logRequestMiddleware,  async (req, res) => {
 
         if (vehicle) {
             vehicle.state = "Retirado";
-            vehicle.exittime = new Date(); // Agregar la hora actual en exitTime/////////
+            vehicle.exittime = new Date();
 
             await vehicle.save();
 
@@ -273,7 +264,7 @@ app.patch('/cars', logRequestMiddleware,  async (req, res) => {
 });
 
 // Obtener todas las placas de los carros en estado activo
-app.get('/cars/license-plates' , logRequestMiddleware, async (req, res) => {
+app.get('/cars/license-plates', logRequestMiddleware, async (req, res) => {
     try {
         const activeVehicles = await Vehicle.findAll({ where: { state: 'Activo' } });
 
@@ -303,7 +294,7 @@ app.get('/cars/license-plates' , logRequestMiddleware, async (req, res) => {
         res.json(licensePlates);
     } catch (error) {
         console.error('###### SERVER: Error al obtener las placas activas de los carros:', error);
-        
+
         await VehicleHistory.create({
             event_type: 'Error',
             url: req.originalUrl,
@@ -317,5 +308,10 @@ app.get('/cars/license-plates' , logRequestMiddleware, async (req, res) => {
     }
 });
 
-
-
+//ping
+app.get('/ping', (req, res) => {
+    const randomDelay = Math.floor(Math.random() * 500); // retraso aleatorio de hasta 500 ms
+    setTimeout(() => {
+        res.send('pong');
+    }, randomDelay);
+});
