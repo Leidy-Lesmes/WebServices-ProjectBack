@@ -16,12 +16,16 @@ const VehicleHistory = require('./src/modelsDB/vehicleHistory');
 const app = express();
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
+const containerId = `server${process.env.NODE_SERVICE_PORT}`;
+console.log('Container ID:', containerId);
+
 
 app.use(express.json());
 app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content-length]'));
 app.use(cors());
 
 app.use(fileUpload());
+
 
 let parkedCars = [];
 
@@ -63,7 +67,7 @@ const logMiddleware = morgan((tokens, req, res) => {
     return null; // Utiliza el formato predeterminado para otras rutas
 });
 
-const logRequestMiddleware = async (req, res, next) => {
+const logRequestMiddleware = (containerId) => async (req, res, next) => {
     try {
         let payload;
         if (req.method === 'GET') {
@@ -81,7 +85,8 @@ const logRequestMiddleware = async (req, res, next) => {
             method: req.method,
             payload: payload,
             error_message: null,
-            error_payload: null
+            error_payload: null,
+            container_id: containerId 
         });
         next();
     } catch (error) {
@@ -89,7 +94,7 @@ const logRequestMiddleware = async (req, res, next) => {
         next(error);
     }
 };
-
+app.use(logRequestMiddleware(process.env.ID_SERVICE));
 
 // Middleware para registrar errores en el historial de solicitudes en la base de datos
 const logErrorMiddleware = async (err, req, res, next) => {
@@ -316,6 +321,3 @@ app.get('/cars/license-plates' , logRequestMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
-
-
-

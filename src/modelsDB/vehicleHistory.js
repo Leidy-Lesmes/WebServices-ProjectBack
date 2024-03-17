@@ -41,6 +41,10 @@ const VehicleHistory = sequelize.define('vehicle_history', {
     error_payload: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    container_id: { 
+        type: DataTypes.STRING(50), 
+        allowNull: true 
     }
 }, {
     tableName: 'vehicle_history',
