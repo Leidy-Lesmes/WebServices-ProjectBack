@@ -4,6 +4,10 @@ const fileUpload = require('express-fileupload');
 const morgan = require('morgan');
 const cors = require('cors');
 
+const WebSocket = require('ws');
+const ws = new WebSocket('ws://localhost:4000');
+
+
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
@@ -65,6 +69,8 @@ const logMiddleware = morgan((tokens, req, res) => {
 
 const logRequestMiddleware = async (req, res, next) => {
     try {
+        const startTime = Date.now(); // Captura el tiempo justo antes de manejar la solicitud
+
         let payload;
         if (req.method === 'GET') {
             payload = JSON.stringify({
@@ -84,12 +90,26 @@ const logRequestMiddleware = async (req, res, next) => {
             error_payload: null,
             container_id: containerId 
         });
+
+        // Llama a `next()` para que la solicitud continúe siendo manejada
         next();
+
+        // Una vez que la solicitud ha sido completada, calcula la diferencia de tiempo
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+
+        // Enviar el tiempo de respuesta al monitor a través del WebSocket
+        const responseTimeLog = { type: 'responseTime', data: { containerId: containerId, responseTime: responseTime } };
+        console.log(`[${new Date().toISOString()}] Enviando tiempo de respuesta al monitor:`, responseTimeLog);
+        ws.send(JSON.stringify(responseTimeLog));
+
     } catch (error) {
-        console.error('###### SERVER: Error al registrar el historial de solicitud:', error);
+        console.error('Error al registrar el historial de solicitud:', error);
         next(error);
     }
 };
+
+
 app.use(logRequestMiddleware);
 
 // Middleware para registrar errores en el historial de solicitudes en la base de datos
