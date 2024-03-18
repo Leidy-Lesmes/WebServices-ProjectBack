@@ -65,27 +65,33 @@ const logMiddleware = morgan((tokens, req, res) => {
 
 const logRequestMiddleware = async (req, res, next) => {
     try {
-        let payload;
-        if (req.method === 'GET') {
-            payload = JSON.stringify({
-                url: req.originalUrl,
-                query: req.query
-            });
-        } else {
-            payload = JSON.stringify(req.body);
-        }
+        // Verificar si la solicitud está relacionada con la gestión de vehículos
+        if (req.originalUrl.startsWith('/cars')) {
+            let payload;
+            if (req.method === 'GET') {
+                payload = JSON.stringify({
+                    url: req.originalUrl,
+                    query: req.query
+                });
+            } else {
+                payload = JSON.stringify(req.body);
+            }
 
-        await VehicleHistory.create({
-            event_type: 'Request',
-            url: req.originalUrl,
-            method: req.method,
-            payload: payload,
-            error_message: null,
-            error_payload: null,
-            container_id: containerId 
-        });
+            // Registrar la solicitud en el historial
+            await VehicleHistory.create({
+                event_type: 'Request',
+                url: req.originalUrl,
+                method: req.method,
+                payload: payload,
+                error_message: null,
+                error_payload: null,
+                container_id: containerId 
+            });
+        }
+        // Pasar al siguiente middleware
         next();
     } catch (error) {
+        // Manejar errores
         console.error('###### SERVER: Error al registrar el historial de solicitud:', error);
         next(error);
     }
@@ -321,13 +327,30 @@ app.get('/ping', (req, res, next) => {
     }, randomDelay);
 });
 
-// Ruta para obtener la cantidad total de solicitudes realizadas
-app.get('/total-requests', async (req, res) => {
+// Ruta para realizar ping y obtener información de solicitudes
+app.get('/ping-and-requests', async (req, res) => {
     try {
-        const totalRequests = await VehicleHistory.count();
-        res.json({ totalRequests });
+        // Realizar ping
+        const randomDelay = Math.floor(Math.random() * 500);
+        setTimeout(async () => {
+            // Respuesta de ping
+            const pingResponse = 'pong';
+
+            // Obtener la cantidad total de solicitudes
+            const totalRequests = await VehicleHistory.count();
+
+            // Obtener la cantidad de errores en event_type "Error"
+            const errorRequests = await VehicleHistory.count({ where: { event_type: 'Error' } });
+
+            // Obtener la cantidad de cada tipo de método
+            const postRequests = await VehicleHistory.count({ where: { method: 'POST' } });
+            const getRequests = await VehicleHistory.count({ where: { method: 'GET' } });
+            const patchRequests = await VehicleHistory.count({ where: { method: 'PATCH' } });
+
+            res.json({ pingResponse, totalRequests, errorRequests, postRequests, getRequests, patchRequests });
+        }, randomDelay);
     } catch (error) {
-        console.error('Error al obtener la cantidad total de solicitudes:', error);
+        console.error('Error al realizar ping y obtener información de solicitudes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
