@@ -57,12 +57,14 @@ morgan.token('jsonlogs', (req, res) => {
 });
 // Middleware para registrar logs solo para las rutas especificadas
 const logMiddleware = morgan((tokens, req, res) => {
+    // Solo utiliza el formato JSON personalizado para ciertas rutas
     if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'GET') {
+        // Logs en formato JSON con la información de la solicitud
         console.log(`##### SERVER: 'El archivo se cargo en ${tokens.date(req, res)}', codigo de respuesta: Status: ${tokens.status(req, res)}`);
         console.log(tokens.jsonlogs(req, res));
         return tokens.jsonlogs(req, res);
     }
-    return null; 
+    return null; // Utiliza el formato predeterminado para otras rutas
 });
 
 const logRequestMiddleware = async (req, res, next) => {
@@ -132,6 +134,8 @@ const logErrorMiddleware = async (err, req, res, next) => {
 app.use('/cars', logMiddleware);
 app.use('/cars/license-plates', logMiddleware)
 
+
+// Configura el middleware de registro predeterminado para otras rutas
 app.use(morgan('combined'));
 app.use(logErrorMiddleware, (err, req, res, next) => {
     console.error('###### SERVER: Error de middleware:', err);
@@ -337,16 +341,11 @@ app.get('/ping', (req, res, next) => {
     }, randomDelay);
 });
 
-// Ruta para obtener la cantidad total de solicitudes realizadas y la cantidad de errores en event_type "Error"
+// Ruta para obtener la cantidad total de solicitudes realizadas
 app.get('/total-requests', async (req, res) => {
     try {
-        // Contar todas las solicitudes
         const totalRequests = await VehicleHistory.count();
-
-        // Contar la cantidad de errores en event_type "Error"
-        const errorRequests = await VehicleHistory.count({ where: { event_type: 'Error' } });
-
-        res.json({ totalRequests, errorRequests });
+        res.json({ totalRequests });
     } catch (error) {
         console.error('Error al obtener la cantidad total de solicitudes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
