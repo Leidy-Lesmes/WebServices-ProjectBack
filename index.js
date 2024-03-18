@@ -23,7 +23,7 @@ app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content
 app.use(cors());
 
 app.use(fileUpload());
-
+let responseTimes = [];
 
 // Middleware para comprobar la conexión a la base de datos
 app.use(async (req, res, next) => {
@@ -65,37 +65,44 @@ const logMiddleware = morgan((tokens, req, res) => {
 
 const logRequestMiddleware = async (req, res, next) => {
     try {
-        // Verificar si la solicitud está relacionada con la gestión de vehículos
-        if (req.originalUrl.startsWith('/cars')) {
-            let payload;
-            if (req.method === 'GET') {
-                payload = JSON.stringify({
-                    url: req.originalUrl,
-                    query: req.query
-                });
-            } else {
-                payload = JSON.stringify(req.body);
-            }
+        const startTime = Date.now(); // Captura el tiempo justo antes de manejar la solicitud
 
-            // Registrar la solicitud en el historial
-            await VehicleHistory.create({
-                event_type: 'Request',
+        let payload;
+        if (req.method === 'GET') {
+            payload = JSON.stringify({
                 url: req.originalUrl,
-                method: req.method,
-                payload: payload,
-                error_message: null,
-                error_payload: null,
-                container_id: containerId 
+                query: req.query
             });
+        } else {
+            payload = JSON.stringify(req.body);
         }
-        // Pasar al siguiente middleware
+
+        await VehicleHistory.create({
+            event_type: 'Request',
+            url: req.originalUrl,
+            method: req.method,
+            payload: payload,
+            error_message: null,
+            error_payload: null,
+            container_id: containerId 
+        });
+
+        // Una vez que la solicitud ha sido completada, calcula la diferencia de tiempo
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+
+        // Agregar el tiempo de respuesta a la lista
+        responseTimes.push({ containerId: containerId, responseTime: responseTime });
+
+        // Llama a `next()` para que la solicitud continúe siendo manejada
         next();
+
     } catch (error) {
-        // Manejar errores
-        console.error('###### SERVER: Error al registrar el historial de solicitud:', error);
+        console.error('Error al registrar el historial de solicitud:', error);
         next(error);
     }
 };
+
 app.use(logRequestMiddleware);
 
 // Middleware para registrar errores en el historial de solicitudes en la base de datos
@@ -354,3 +361,35 @@ app.get('/ping-and-requests', async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
+// Agrega el método requestFilter al final del archivo del primer proyecto
+app.get('/request-filter', async (req, res) => {
+    try {
+        const registros = await VehicleHistory.findAll();
+        
+        // Mapear los registros para obtener solo los campos deseados
+        const filteredRecords = registros.map(registro => ({
+            event_time: registro.event_time,
+            url: registro.url,
+            method: registro.method,
+            payload: registro.payload,
+            container_id: registro.container_id
+        }));
+        
+        res.json({ success: true, data: filteredRecords });
+    } catch (error) {
+        console.error('Error al filtrar datos:', error);
+        res.status(500).json({ success: false, error: 'Error al filtrar datos' });
+    }
+});
+
+app.get('/response-times', (req, res) => {
+    try {
+        // Enviar los tiempos de respuesta como respuesta al cliente
+        res.json(responseTimes);
+    } catch (error) {
+        console.error('Error al obtener los tiempos de respuesta:', error);
+        res.status(500).json({ success: false, error: 'Error al obtener los tiempos de respuesta' });
+    }
+});
+
