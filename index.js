@@ -341,9 +341,6 @@ app.get('/ping-and-requests', async (req, res) => {
         // Realizar ping
         const randomDelay = Math.floor(Math.random() * 500);
         setTimeout(async () => {
-            // Respuesta de ping
-            const pingResponse = 'pong';
-
             // Obtener la cantidad total de solicitudes
             const totalRequests = await VehicleHistory.count();
 
@@ -355,13 +352,14 @@ app.get('/ping-and-requests', async (req, res) => {
             const getRequests = await VehicleHistory.count({ where: { method: 'GET' } });
             const patchRequests = await VehicleHistory.count({ where: { method: 'PATCH' } });
 
-            res.json({ pingResponse, totalRequests, errorRequests, postRequests, getRequests, patchRequests });
+            res.json({ totalRequests, errorRequests, postRequests, getRequests, patchRequests });
         }, randomDelay);
     } catch (error) {
         console.error('Error al realizar ping y obtener información de solicitudes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
 
 // Agrega el método requestFilter al final del archivo del primer proyecto
 app.get('/request-filter', async (req, res) => {
@@ -386,7 +384,6 @@ app.get('/request-filter', async (req, res) => {
 
 app.get('/response-times', (req, res) => {
     try {
-        // Enviar los tiempos de respuesta como respuesta al cliente
         res.json(responseTimes);
     } catch (error) {
         console.error('Error al obtener los tiempos de respuesta:', error);
