@@ -329,7 +329,7 @@ app.get('/cars/license-plates', logRequestMiddleware, async (req, res, next) => 
 
 //ping
 app.get('/ping', (req, res, next) => {
-    const randomDelay = Math.floor(Math.random() * 500);
+    const randomDelay = Math.floor(Math.random() * 20000);
     setTimeout(() => {
         res.send('pong');
     }, randomDelay);
