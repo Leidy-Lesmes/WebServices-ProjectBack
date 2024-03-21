@@ -1,0 +1,19 @@
+FROM node:18-bullseye
+
+# Define una variable de entorno para el puerto
+ENV PORT=4004
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Copia el contenido del directorio actual al directorio de trabajo
+COPY . .
+
+# Instala las dependencias
+RUN npm install
+
+# Exponer el puerto
+EXPOSE $PORT
+
+# Establece el comando predeterminado para iniciar la aplicación
+CMD ["npm", "start"]
