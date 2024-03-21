@@ -390,4 +390,3 @@ app.get('/response-times', (req, res) => {
         res.status(500).json({ success: false, error: 'Error al obtener los tiempos de respuesta' });
     }
 });
-
