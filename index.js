@@ -65,35 +65,36 @@ const logMiddleware = morgan((tokens, req, res) => {
 
 const logRequestMiddleware = async (req, res, next) => {
     try {
-        const startTime = Date.now(); // Captura el tiempo justo antes de manejar la solicitud
+        if (req.originalUrl.startsWith('/cars')) {
+            const startTime = Date.now(); // Captura el tiempo justo antes de manejar la solicitud
 
-        let payload;
-        if (req.method === 'GET') {
-            payload = JSON.stringify({
+            let payload;
+            if (req.method === 'GET') {
+                payload = JSON.stringify({
+                    url: req.originalUrl,
+                    query: req.query
+                });
+            } else {
+                payload = JSON.stringify(req.body);
+            }
+
+            await VehicleHistory.create({
+                event_type: 'Request',
                 url: req.originalUrl,
-                query: req.query
+                method: req.method,
+                payload: payload,
+                error_message: null,
+                error_payload: null,
+                container_id: containerId
             });
-        } else {
-            payload = JSON.stringify(req.body);
+
+            // Una vez que la solicitud ha sido completada, calcula la diferencia de tiempo
+            const endTime = Date.now();
+            const responseTime = endTime - startTime;
+
+            // Agregar el tiempo de respuesta a la lista
+            responseTimes.push({ containerId: containerId, responseTime: responseTime });
         }
-
-        await VehicleHistory.create({
-            event_type: 'Request',
-            url: req.originalUrl,
-            method: req.method,
-            payload: payload,
-            error_message: null,
-            error_payload: null,
-            container_id: containerId 
-        });
-
-        // Una vez que la solicitud ha sido completada, calcula la diferencia de tiempo
-        const endTime = Date.now();
-        const responseTime = endTime - startTime;
-
-        // Agregar el tiempo de respuesta a la lista
-        responseTimes.push({ containerId: containerId, responseTime: responseTime });
-
         // Llama a `next()` para que la solicitud continúe siendo manejada
         next();
 
@@ -113,9 +114,9 @@ const logErrorMiddleware = async (err, req, res, next) => {
             url: req.originalUrl,
             method: req.method,
             payload: JSON.stringify(req.body),
-            error_message: err.message, 
+            error_message: err.message,
             error_payload: JSON.stringify(err),
-            container_id: containerId 
+            container_id: containerId
         });
         next();
     } catch (error) {
@@ -328,7 +329,7 @@ app.get('/cars/license-plates', logRequestMiddleware, async (req, res, next) => 
 
 //ping
 app.get('/ping', (req, res, next) => {
-    const randomDelay = Math.floor(Math.random() * 500);
+    const randomDelay = Math.floor(Math.random() * 20000);
     setTimeout(() => {
         res.send('pong');
     }, randomDelay);
@@ -340,9 +341,6 @@ app.get('/ping-and-requests', async (req, res) => {
         // Realizar ping
         const randomDelay = Math.floor(Math.random() * 500);
         setTimeout(async () => {
-            // Respuesta de ping
-            const pingResponse = 'pong';
-
             // Obtener la cantidad total de solicitudes
             const totalRequests = await VehicleHistory.count();
 
@@ -354,7 +352,7 @@ app.get('/ping-and-requests', async (req, res) => {
             const getRequests = await VehicleHistory.count({ where: { method: 'GET' } });
             const patchRequests = await VehicleHistory.count({ where: { method: 'PATCH' } });
 
-            res.json({ pingResponse, totalRequests, errorRequests, postRequests, getRequests, patchRequests });
+            res.json({ totalRequests, errorRequests, postRequests, getRequests, patchRequests });
         }, randomDelay);
     } catch (error) {
         console.error('Error al realizar ping y obtener información de solicitudes:', error);
@@ -362,11 +360,12 @@ app.get('/ping-and-requests', async (req, res) => {
     }
 });
 
+
 // Agrega el método requestFilter al final del archivo del primer proyecto
 app.get('/request-filter', async (req, res) => {
     try {
         const registros = await VehicleHistory.findAll();
-        
+
         // Mapear los registros para obtener solo los campos deseados
         const filteredRecords = registros.map(registro => ({
             event_time: registro.event_time,
@@ -375,7 +374,7 @@ app.get('/request-filter', async (req, res) => {
             payload: registro.payload,
             container_id: registro.container_id
         }));
-        
+
         res.json({ success: true, data: filteredRecords });
     } catch (error) {
         console.error('Error al filtrar datos:', error);
@@ -385,7 +384,6 @@ app.get('/request-filter', async (req, res) => {
 
 app.get('/response-times', (req, res) => {
     try {
-        // Enviar los tiempos de respuesta como respuesta al cliente
         res.json(responseTimes);
     } catch (error) {
         console.error('Error al obtener los tiempos de respuesta:', error);
