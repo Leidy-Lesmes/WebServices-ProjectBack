@@ -13,6 +13,8 @@ const Vehicle = require('./src/modelsDB/vehicle');
 const VehicleHistory = require('./src/modelsDB/vehicleHistory');
 
 const app = express();
+const bodyParser = require('body-parser');
+
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
 const containerId = process.env.ID_SERVICE;
@@ -22,8 +24,13 @@ app.use(express.json());
 app.use(morgan(':date[iso] :url :method :status :response-time ms - :res[content-length]'));
 app.use(cors());
 
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+
 app.use(fileUpload());
 let responseTimes = [];
+let SERVERS = "";
 
 // Middleware para comprobar la conexión a la base de datos
 app.use(async (req, res, next) => {
@@ -389,4 +396,57 @@ app.get('/response-times', (req, res) => {
         console.error('Error al obtener los tiempos de respuesta:', error);
         res.status(500).json({ success: false, error: 'Error al obtener los tiempos de respuesta' });
     }
+});
+
+axios.post('http://localhost:3000/register-node', {
+    ip: ip,
+    port: port
+})
+
+axios.post('http://localhost:5000/register-node', {
+    ip: ip,
+    port: port
+})
+
+app.post('/register-new-service', (req, res) => {
+    const ip = req.ip; 
+    const port = req.app.settings.port; 
+
+    console.log(`IP: ${ip}, Puerto: ${port}`);
+
+    // Agregar el nuevo servidor a la lista de servidores
+    const newServer = `${ip}:${port}`;
+    if (SERVERS) {
+        SERVERS += `,${newServer}`;
+    } else {
+        SERVERS = newServer;
+    }
+
+    console.log("Lista de servidores actualizada:", SERVERS);
+
+    // Enviar datos al balanceador
+    axios.post('http://localhost:3000/register-node', {
+        ip: ip,
+        port: port
+    })
+    .then(response => {
+        console.log('Datos enviados exitosamente al balanceador:', response.data);
+        res.status(200).json({ success: true, message: 'Datos enviados exitosamente al balanceador' });
+    })
+    .catch(error => {
+        console.error('Error al enviar datos al balanceador:', error);
+        res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    });
+
+    // Enviar datos al monitor
+    axios.post('http://localhost:5000/register-node', {
+        ip: ip,
+        port: port
+    })
+    .then(response => {
+        console.log('Datos enviados exitosamente al monitor:', response.data);
+    })
+    .catch(error => {
+        console.error('Error al enviar datos al monitor:', error);
+    });
 });
