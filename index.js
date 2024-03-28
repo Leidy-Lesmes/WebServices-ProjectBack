@@ -15,6 +15,8 @@ const VehicleHistory = require('./src/modelsDB/vehicleHistory');
 const app = express();
 const bodyParser = require('body-parser');
 
+const balancerURL = process.env.BALANCER_URL;
+const monitorURL = process.env.MONITOR_URL;
 const port = process.env.NODE_SERVICE_PORT;
 const ip = process.env.NODE_SERVICE_IP;
 const containerId = process.env.ID_SERVICE;
@@ -336,7 +338,7 @@ app.get('/cars/license-plates', logRequestMiddleware, async (req, res, next) => 
 
 //ping
 app.get('/ping', (req, res, next) => {
-    const randomDelay = Math.floor(Math.random() * 12000);
+    const randomDelay = Math.floor(Math.random() * 8000);
     setTimeout(() => {
         res.send('pong');
     }, randomDelay);
@@ -398,12 +400,12 @@ app.get('/response-times', (req, res) => {
     }
 });
 
-axios.post('http://localhost:3000/register-node', {
+axios.post(balancerURL, {
     ip: ip,
     port: port
 })
 
-axios.post('http://localhost:5000/register-node', {
+axios.post(monitorURL, {
     ip: ip,
     port: port
 })
@@ -425,7 +427,7 @@ app.post('/register-new-service', (req, res) => {
     console.log("Lista de servidores actualizada:", SERVERS);
 
     // Enviar datos al balanceador
-    axios.post('http://localhost:3000/register-node', {
+    axios.post(balancerURL, {
         ip: ip,
         port: port
     })
@@ -439,7 +441,7 @@ app.post('/register-new-service', (req, res) => {
     });
 
     // Enviar datos al monitor
-    axios.post('http://localhost:5000/register-node', {
+    axios.post(monitorURL, {
         ip: ip,
         port: port
     })
